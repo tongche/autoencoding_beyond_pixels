@@ -1,5 +1,4 @@
 import numpy as np
-import cudarray as ca
 import deeppy as dp
 import deeppy.expr as ex
 
@@ -34,16 +33,16 @@ class GAN(dp.base.Model, dp.base.CollectionMixin):
             weights = np.zeros((dis_batch_size, 1))
             weights[:batch_size] = self.real_vs_gen_weight
             weights[batch_size:] = (1-self.real_vs_gen_weight)
-            dis_weights = ca.array(weights)
+            dis_weights = np.array(weights)
             shape = np.array(x_shape)**0
             shape[0] = dis_batch_size
-            dis_weights_inv = ca.array(1.0 / np.reshape(weights, shape))
+            dis_weights_inv = np.array(1.0 / np.reshape(weights, shape))
             x = ScaleGradient(dis_weights_inv)(x)
         # Discriminate
         d = self.discriminator(x)
         if self.real_vs_gen_weight != 0.5:
             d = ScaleGradient(dis_weights)(d)
-        sign = np.ones((batch_size*2, 1), dtype=ca.float_)
+        sign = np.ones((batch_size*2, 1), dtype=np.float)
         sign[batch_size:] = -1.0
         offset = np.zeros_like(sign)
         offset[batch_size:] = 1.0
@@ -51,7 +50,7 @@ class GAN(dp.base.Model, dp.base.CollectionMixin):
         self.loss = ex.sum(self.gan_loss)
         self._graph = ex.graph.ExprGraph(self.loss)
         self._graph.setup()
-        self.loss.grad_array = ca.array(-1.0)
+        self.loss.grad_array = np.array(-1.0)
 
     @property
     def params(self):

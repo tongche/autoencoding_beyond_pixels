@@ -1,5 +1,4 @@
 import numpy as np
-import cudarray as ca
 import deeppy as dp
 import deeppy.expr as ex
 
@@ -19,13 +18,13 @@ class NLLNormal(ex.nnet.loss.Loss):
         tmp **= 2.0
         tmp *= -self.multiplier
         tmp += self.c
-        ca.sum(tmp, axis=self.axis, out=self.array)
+        np.sum(tmp, axis=self.axis, out=self.array)
 
     def bprop(self):
-        ca.subtract(self.pred.array, self.target.array, self.pred.grad_array)
+        np.subtract(self.pred.array, self.target.array, self.pred.grad_array)
         if self.sigma != 1.0:
             self.pred.grad_array *= 2*self.multiplier
-        self.pred.grad_array *= ca.reshape(self.grad_array, self.bcast_shape)
+        self.pred.grad_array *= np.reshape(self.grad_array, self.bcast_shape)
 
 
 class KLDStandardNormal(ex.nnet.loss.Loss):
@@ -40,17 +39,17 @@ class KLDStandardNormal(ex.nnet.loss.Loss):
 
     def fprop(self):
         tmp1 = self.mu.array**2
-        ca.negative(tmp1, tmp1)
+        np.negative(tmp1, tmp1)
         tmp1 += self.logvar.array
         tmp1 += 1
-        tmp1 -= ca.exp(self.logvar.array)
-        ca.sum(tmp1, axis=self.axis, out=self.array)
+        tmp1 -= np.exp(self.logvar.array)
+        np.sum(tmp1, axis=self.axis, out=self.array)
         self.array *= -0.5
 
     def bprop(self):
-        grad = ca.reshape(self.grad_array, self.bcast_shape)
-        ca.multiply(self.mu.array, grad, self.mu.grad_array)
-        ca.exp(self.logvar.array, out=self.logvar.grad_array)
+        grad = np.reshape(self.grad_array, self.bcast_shape)
+        np.multiply(self.mu.array, grad, self.mu.grad_array)
+        np.exp(self.logvar.array, out=self.logvar.grad_array)
         self.logvar.grad_array -= 1
         self.logvar.grad_array *= 0.5
         self.logvar.grad_array *= grad
@@ -118,7 +117,7 @@ class AdversarialEncoder(ex.Op, dp.base.CollectionMixin):
         z_samples = self.samples(batch_size)
         z_ = ex.Concatenate(axis=0)(z_samples, z_)
         d_z = self.discriminator(z_)
-        sign = np.ones((batch_size*2, 1), dtype=ca.float_)
+        sign = np.ones((batch_size*2, 1), dtype=np.float)
         sign[batch_size:] = -1.0
         offset = np.zeros_like(sign)
         offset[batch_size:] = 1.0
@@ -160,7 +159,7 @@ class Autoencoder(dp.base.Model, dp.base.CollectionMixin):
         self.loss = -(encoder_loss + recon_loss)
         self._graph = ex.graph.ExprGraph(self.loss)
         self._graph.setup()
-        self.loss.grad_array = ca.array(-np.ones((batch_size,)))
+        self.loss.grad_array = np.array(-np.ones((batch_size,)))
 
     def update(self, x):
         self.x_src.array = x

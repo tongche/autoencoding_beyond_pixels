@@ -1,6 +1,5 @@
 from copy import deepcopy
 import numpy as np
-import cudarray as ca
 import deeppy as dp
 import deeppy.expr as ex
 
@@ -99,16 +98,16 @@ class AEGAN(dp.base.Model, dp.base.CollectionMixin):
         weights = np.zeros((dis_batch_size,))
         weights[:batch_size] = real_weight
         weights[batch_size:] = gen_weight
-        dis_weights = ca.array(weights)
+        dis_weights = weights
         shape = np.array(x_shape)**0
         shape[0] = dis_batch_size
-        dis_weights_inv = ca.array(1.0 / np.reshape(weights, shape))
+        dis_weights_inv = 1.0 / np.reshape(weights, shape)
         x = ScaleGradient(dis_weights_inv)(x)
         # Discriminate
         d = self.discriminator(x)
         d = ex.Reshape((-1,))(d)
         d = ScaleGradient(dis_weights)(d)
-        sign = np.ones((gen_size + batch_size,), dtype=ca.float_)
+        sign = np.ones((gen_size + batch_size,), dtype=np.float)
         sign[batch_size:] = -1.0
         offset = np.zeros_like(sign)
         offset[batch_size:] = 1.0
@@ -116,7 +115,7 @@ class AEGAN(dp.base.Model, dp.base.CollectionMixin):
         self.loss = ex.sum(loss) - ex.sum(self.gan_loss)
         self._graph = ex.graph.ExprGraph(self.loss)
         self._graph.setup()
-        self.loss.grad_array = ca.array(1.0)
+        self.loss.grad_array = np.array(1.0)
 
     @property
     def params(self):
